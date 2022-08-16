@@ -321,6 +321,7 @@
                 :format x-format}
      :y        {:type (or (:graph.y_axis.scale viz-settings) "linear")
                 :format y-format}
+     :show_values (boolean (:graph.show_values viz-settings))
      :labels   labels}))
 
 (defn- set-default-stacked
