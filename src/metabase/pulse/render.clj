@@ -87,6 +87,7 @@
 
         (#{:area
            :bar
+           :line
            :combo
            :funnel
            :progress
