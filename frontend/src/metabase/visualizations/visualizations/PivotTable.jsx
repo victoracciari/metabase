@@ -9,6 +9,10 @@ import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { darken, lighten } from "metabase/lib/colors";
 import "metabase/visualizations/components/TableInteractive/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
+import ChartSettingsTableFormatting, {
+  isFormattable,
+} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
@@ -140,7 +144,7 @@ class PivotTable extends Component {
       },
     },
     [COLUMN_SPLIT_SETTING]: {
-      section: null,
+      section: t`Columns`,
       widget: "fieldsPartition",
       persistDefault: true,
       getHidden: ([{ data }]) =>
@@ -191,6 +195,38 @@ class PivotTable extends Component {
 
         return addMissingCardBreakouts(setting, card);
       },
+    },
+    "table.column_formatting": {
+      section: t`Conditional Formatting`,
+      widget: ChartSettingsTableFormatting,
+      default: [],
+      getProps: (series, settings) => ({
+        cols: series[0].data.cols.filter(isFormattable),
+        isPivoted: settings["table.pivot"],
+      }),
+
+      getHidden: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => cols.filter(isFormattable).length === 0,
+      readDependencies: ["table.pivot"],
+    },
+    "table._cell_background_getter": {
+      getValue(
+        [
+          {
+            data: { rows, cols },
+          },
+        ],
+        settings,
+      ) {
+        return makeCellBackgroundGetter(rows, cols, settings);
+      },
+      readDependencies: ["table.column_formatting", "table.pivot"],
     },
   };
 
@@ -261,6 +297,8 @@ class PivotTable extends Component {
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
+
+    const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const grid = this.bodyRef && findDOMNode(this.bodyRef);
 
@@ -405,7 +443,7 @@ class PivotTable extends Component {
     const bodyRenderer = ({ key, style, rowIndex, columnIndex }) => (
       <div key={key} style={style} className="flex">
         {getRowSection(columnIndex, rowIndex).map(
-          ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
+          ({ value, isSubtotal, isGrandTotal, clicked, settings }, index) => (
             <Cell
               key={index}
               value={value}
@@ -415,6 +453,11 @@ class PivotTable extends Component {
               isNightMode={isNightMode}
               isBody
               onClick={this.getCellClickHander(clicked)}
+              backgroundColor={getCellBackgroundColor(
+                value,
+                rowIndex,
+                settings?.column?.name,
+              )}
             />
           ),
         )}
@@ -635,6 +678,7 @@ function Cell({
   icon,
   hasCustomColors,
   isNightMode,
+  backgroundColor,
 }) {
   return (
     <div
@@ -647,6 +691,7 @@ function Cell({
               backgroundColor: getBgDarkColor(hasCustomColors, isNightMode),
             }
           : {}),
+        backgroundColor,
       }}
       className={cx(
         "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",

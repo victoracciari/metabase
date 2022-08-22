@@ -38,11 +38,7 @@ export function multiLevelPivot(data, settings) {
       .filter(index => index !== -1),
   );
 
-  const { pivotData, columns } = splitPivotData(
-    data,
-    rowColumnIndexes,
-    columnColumnIndexes,
-  );
+  const { pivotData, columns } = splitPivotData(data);
 
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
@@ -83,8 +79,13 @@ export function multiLevelPivot(data, settings) {
       columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
     );
     const values = valueColumnIndexes.map(index => row[index]);
+    const valueColumnsSettings = valueColumnIndexes.map(
+      index => columnSettings[index],
+    );
+
     valuesByKey[valueKey] = {
       values,
+      valueColumnsSettings,
       data: row.map((value, index) => ({ value, col: columns[index] })),
       dimensions: row
         .map((value, index) => ({
@@ -206,7 +207,7 @@ export function multiLevelPivot(data, settings) {
 // This pulls apart the different aggregations that were packed into one result set.
 // There's a column indicating which breakouts were used to compute that row.
 // We use that column to split apart the data and convert the field refs to indexes.
-function splitPivotData(data, rowIndexes, columnIndexes) {
+function splitPivotData(data) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
   const columns = data.cols.filter(col => !isPivotGroupColumn(col));
   const breakouts = columns.filter(col => col.source === "breakout");
@@ -292,10 +293,16 @@ function createRowSectionGetter({
       const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
       return getSubtotals(indexes, indexValues, otherAttrs);
     }
-    const { values, data, dimensions } =
+    const { values, valueColumnsSettings, data, dimensions } =
       valuesByKey[JSON.stringify(indexValues)] || {};
-    return formatValues(values).map(o =>
-      data === undefined ? o : { ...o, clicked: { data, dimensions } },
+    return formatValues(values).map((o, index) =>
+      data === undefined
+        ? o
+        : {
+            ...o,
+            clicked: { data, dimensions },
+            settings: valueColumnsSettings[index],
+          },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
