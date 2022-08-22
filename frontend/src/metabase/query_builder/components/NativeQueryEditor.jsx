@@ -67,11 +67,16 @@ class NativeQueryEditor extends Component {
   static defaultProps = {
     isOpen: false,
     cancelQueryOnLeave: true,
+    resizable: true,
   };
 
   UNSAFE_componentWillMount() {
     const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
-    setIsNativeEditorOpen(!question || !question.isSaved() || isInitiallyOpen);
+    if (setIsNativeEditorOpen) {
+      setIsNativeEditorOpen(
+        !question || !question.isSaved() || isInitiallyOpen,
+      );
+    }
   }
 
   componentDidMount() {
@@ -160,7 +165,7 @@ class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
-    if (this.props.cancelQueryOnLeave) {
+    if (this.props.cancelQueryOnLeave && this.props.cancelQuery) {
       this.props.cancelQuery();
     }
     document.removeEventListener("keydown", this.handleKeyDown);
@@ -172,16 +177,18 @@ class NativeQueryEditor extends Component {
 
   handleCursorChange = _.debounce((e, { cursor }) => {
     this.swapInCorrectCompletors(cursor);
-    this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    if (this.props.setNativeEditorSelectedRange) {
+      this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    }
   }, 100);
 
   handleKeyDown = e => {
-    const { isRunning, cancelQuery } = this.props;
+    const { isRunning, cancelQuery, enableRun } = this.props;
 
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      if (isRunning) {
+      if (isRunning && cancelQuery) {
         cancelQuery();
-      } else {
+      } else if (enableRun) {
         this.runQuery();
       }
     }
@@ -417,15 +424,16 @@ class NativeQueryEditor extends Component {
       hasEditingSidebar = true,
       resizableBoxProps = {},
       snippetCollections = [],
+      resizable,
     } = this.props;
 
     const parameters = query.question().parameters();
 
-    const dragHandle = (
+    const dragHandle = resizable ? (
       <div className="NativeQueryEditorDragHandleWrapper">
         <div className="NativeQueryEditorDragHandle" />
       </div>
-    );
+    ) : null;
 
     const canSaveSnippets = snippetCollections.some(
       collection => collection.can_write,
@@ -451,7 +459,7 @@ class NativeQueryEditor extends Component {
                 setParameterIndex={this.setParameterIndex}
               />
             )}
-            {query.hasWritePermission() && (
+            {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
               <VisibilityToggler
                 className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}

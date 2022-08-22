@@ -79,6 +79,14 @@ const NewItemMenu = ({
         event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
       });
+
+      items.push({
+        title: "Action",
+        icon: "play",
+        link: "/action/create",
+        event: `${analyticsContext};New Action Click;`,
+        onClose: onCloseNavbar,
+      });
     }
 
     items.push(
